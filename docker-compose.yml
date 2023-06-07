@@ -1,0 +1,31 @@
+version: '3.8'
+services:
+    php-apache-environment:
+        container_name: php-apache
+        build:
+            context: ./
+            dockerfile: Dockerfile
+        depends_on:
+            - db
+        volumes:
+            - ./src:/var/www/html/
+        env_file:
+            - .env
+        ports:
+            - 8100:80
+    db:
+        container_name: db
+        image: mysql
+        volumes:
+           - ./src/mysql-dump:/docker-entrypoint-initdb.d
+        environment:
+            MYSQL_ROOT_PASSWORD: root
+            MYSQL_DATABASE: gift
+            MYSQL_USER: gift
+            MYSQL_PASSWORD: root
+            REDIS_HOST: cache
+            REDIS_PORT: 6379
+        ports:
+            - "9906:3306"
+    cache:
+       image: redis:latest
