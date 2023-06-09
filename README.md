@@ -117,3 +117,46 @@ Invalid Employee Id response
 }
 ```
 
+## REDIS installation inside the php
+
+```bash
+composer require predis/predis
+```
+
+Initating the Redis client
+
+```bash
+require './vendor/autoload.php';
+$redis = new Predis\Client();
+echo $redis->ping();
+```
+
+Set the Redis key and retreive them
+
+```bash
+$redis->set('name', 'redis');
+$redis->get('name');
+```
+
+Set the expiry time to the Redis key
+
+```bash
+$redis->expire('name', 10); //seconds 10
+```
+
+## REDIS to handle the rate limit for hitting an API
+
+```bash
+require './vendor/autoload.php';
+$redis = new Predis\Client();
+$ip = $_SERVER['REMOTE_ADDR'];
+$reqCount = $redis->icr($ip); //it will create a key with increment by 1
+if($reqCount == 0) $redis->expiry($ip, 10); // setting expiry as 10 sec
+if($reqCount < 6){
+    // allow the user to process
+}else{
+    $ttl = $redis->ttl($ip); //time live the expiry time (means $ttl time let the user to know much time is pending to start the new requests again)
+}
+```
+
+
