@@ -1,7 +1,7 @@
 <?php
 
 include_once './vendor/Log.php';
-
+require './vendor/autoload.php';
 /**
  * This class helps to assign the gifts to the employees based on their employee id and interests
  */
@@ -12,10 +12,12 @@ class DistributionModel
     private $employeeInfo;
     private $response;
     private $empId;
+    private $redis;
 
     public function __construct(DatabaseConnector $databaseConn)
     {
         $this->databaseConn = $databaseConn->getConnection();
+        $this->redis = new Predis\Client();
     }
 
     /**
@@ -40,7 +42,12 @@ class DistributionModel
                         $this->updateEmployeeTable($giftAvailable);
                         $this->updateGiftCategoryTable($giftAvailable);
                         $this->databaseConn->commit();
-                        $this->employeeInfo = $this->isEmployeeAvailable();
+                        if($cache = $this->getCache($this->empId)){
+                            $this->employeeInfo = $cache;
+                        }else{
+                            $this->employeeInfo = $this->isEmployeeAvailable();
+                            $this->setCache($this->empId, $this->employeeInfo);
+                        }
                         $this->setResponse(200, "Gift is assigned");
                     } catch (exception $e) {
                         $this->databaseConn->rollBack();
@@ -156,6 +163,28 @@ class DistributionModel
     public function setResponse($code, $message): array
     {
         return $this->response = ["code" => $code, "message" => $message, "data" => !empty($this->employeeInfo) ? $this->employeeInfo : new stdClass()];
+    }
+
+    /**
+     * This function set the redis cache
+     *
+     * @param  $employeeId    
+     * @param  $data array
+     *
+     */
+    public function setCache($employeeId, $data): void{
+        $this->redis->set($employeeId, json_encode($data));
+        $this->redis->expiry($employeeId, 30);
+    }
+
+    /**
+     * This function get the redis cache
+     *
+     * @param  $employeeId    
+     * @return array
+     */
+    public function getCache($employeeId, $data): array{
+        return json_decode($this->redis->get($employeeId, true)) ?? [];
     }
 
 }
